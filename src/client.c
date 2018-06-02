@@ -22,14 +22,14 @@ int main(int argc, char *argv[]) {
 	struct hostent *server;
 
     int buffersize = 0;
-    char *buffer;
+    char *buffer = NULL;
 
     //Initialize structure with \0
     memset(&serv_addr, '\0', sizeof(serv_addr));
 
     if (argc < 3) {
        fprintf(stderr,"usage %s hostname port filenames\n", argv[0]);
-       exit(0);
+       exit(1);
     }
 
     //Convert portnumber to int
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     server = gethostbyname(argv[1]);
     if(server == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
-        exit(0);
+        exit(1);
     }
 
     //Fill needed structure with information
@@ -75,6 +75,11 @@ int main(int argc, char *argv[]) {
     //Allocate buffer
     buffer = calloc(1, buffersize * sizeof(char));
 
+	if(buffer == NULL) {
+		printf("Something went wrong while allocating memory!\n");
+		exit(1);
+	}
+
     //Fill buffer
     for(int i = 3; i < argc; i++) {
         strcat(buffer, argv[i]);
@@ -88,6 +93,8 @@ int main(int argc, char *argv[]) {
 	if (n < 0) {
 		error("ERROR writing to socket");
 	}
+
+	free(buffer);
 
     return 0;
 }
