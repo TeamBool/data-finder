@@ -14,6 +14,11 @@ void error(const char *msg)
     exit(1);
 }
 
+void printError(const char *msg) {
+    fprintf(stderr, "%s", msg);
+    exit(1);
+}
+
 int main(int argc, char *argv[]) {
     int sockfd = 0;
 	int portno = 0;
@@ -24,17 +29,32 @@ int main(int argc, char *argv[]) {
     int buffersize = 0;
     char *buffer = NULL;
 
-    //Initialize structure with \0
-    memset(&serv_addr, '\0', sizeof(serv_addr));
-
-    if (argc < 3) {
-       fprintf(stderr,"usage %s hostname port filenames\n", argv[0]);
-       exit(1);
+	//Check for arguments
+    if (argc < 4) {
+       printError("usage %s hostname port filenames\n");
     }
 
-    //Convert portnumber to int
+	//Convert portnumber to int
+	if(strlen(argv[2]) > 5) {
+		printError("Invalid portnumber!\n");
+	}
+
+	for(int i = 0; i < strlen(argv[2]); i++) {
+        if(!(argv[2][i] >= '0' && argv[2][i] <= '9')){
+            printError("Invalid portnumber!\n");
+        }
+	}
+
     portno = atoi(argv[2]);
+
+    if(portno > 65535) {
+        printError("Invalid portnumber!\n");
+    }
+    
     printf("Port: %d\n", portno);
+
+    //Initialize structure with \0
+    memset(&serv_addr, '\0', sizeof(serv_addr));
 
     //Create Socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -46,8 +66,7 @@ int main(int argc, char *argv[]) {
     //Resolve hostname
     server = gethostbyname(argv[1]);
     if(server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
-        exit(1);
+        printError("ERROR, no such host\n");
     }
 
     //Fill needed structure with information
@@ -73,8 +92,7 @@ int main(int argc, char *argv[]) {
     printf("Buffersize: %d\n", buffersize);
 
     //Allocate buffer
-    buffer = calloc(1, buffersize * sizeof(char));
-
+    buffer = calloc(1, buffersize * sizeof(char)+1);
 	if(buffer == NULL) {
 		printf("Something went wrong while allocating memory!\n");
 		exit(1);
@@ -85,7 +103,6 @@ int main(int argc, char *argv[]) {
         strcat(buffer, argv[i]);
         strcat(buffer, "@");
     }
-
     printf("Buffer: %s\n", buffer);
 
     //Send buffer
