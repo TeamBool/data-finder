@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -10,163 +11,83 @@
 void error(const char *msg)
 {
     perror(msg);
-    exit(0);
+    exit(1);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     int sockfd = 0;
 	int portno = 0;
 	int n = 0;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
+	struct sockaddr_in serv_addr;
+	struct hostent *server;
 
-    //Neue Variablen fue die String-Bearbeitung
-    int groesse_alt[argc-3];	//Dateinamen, Zeichenanzahl
-	int groesse_neu[argc-3];	//Dateinamen, Zeichenanzahl mit Trennzeichen
-	char *dateinamen[argc-3];
+    int buffersize = 0;
+    char *buffer;
 
-	int buffergroesse = 0;
-	char *buffer;
+    //Initialize structure with \0
+    memset(&serv_addr, '\0', sizeof(serv_addr));
 
-	int i = 3;		// Zaehlvariable
-	int j = 0;		// Extra Zaehlvariable
-
-    if (argc < 3)
-    {
-       fprintf(stderr,"usage %s hostname port\n", argv[0]);
+    if (argc < 3) {
+       fprintf(stderr,"usage %s hostname port filenames\n", argv[0]);
        exit(0);
     }
+
+    //Convert portnumber to int
     portno = atoi(argv[2]);
+    printf("Port: %d\n", portno);
+
+    //Create Socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
+    printf("Sockfd: %d\n", sockfd);
+    if (sockfd < 0) {
         error("ERROR opening socket");
+    }
+
+    //Resolve hostname
     server = gethostbyname(argv[1]);
-    if (server == NULL)
-    {
+    if(server == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
         exit(0);
     }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
+
+    //Fill needed structure with information
+    printf("Server: %s\n", server->h_name);
     serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, 
-         (char *)&serv_addr.sin_addr.s_addr,
-         server->h_length);
+    memcpy(&serv_addr.sin_addr.s_addr, server->h_addr_list[0], server->h_length);
     serv_addr.sin_port = htons(portno);
-    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
+
+    //Make IP printable
+    char ipaddr[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &serv_addr.sin_addr.s_addr, ipaddr, INET_ADDRSTRLEN);
+    printf("IP: %s\n", ipaddr);
+
+    //Connect
+    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
         error("ERROR connecting");
+    }
 
-    //KOMMUNIKATION - ANFANG
-    printf("port:%d\n\n", serv_addr.sin_port);
+    //Calculate buffersize
+    for(int i = 3; i < argc; i++) {
+        buffersize = buffersize + strlen(argv[i])+1;
+    }
+    printf("Buffersize: %d\n", buffersize);
 
-	//Anzahl Zeichen der Dateinamen bestimmen und um 1 erweitern
-	while (i < argc)
-	{
-		groesse_alt[j] = strlen(argv[i]);
-		printf("%d.Name: %s, ALT: %d.Zeichen\n", j, argv[i], groesse_alt[j]);
+    //Allocate buffer
+    buffer = calloc(1, buffersize * sizeof(char));
 
-		groesse_neu[j] = groesse_alt[j]+1;
-		printf("%d.Name: %s, NEU: %d.Zeichen\n", j, argv[i], groesse_neu[j]);
+    //Fill buffer
+    for(int i = 3; i < argc; i++) {
+        strcat(buffer, argv[i]);
+        strcat(buffer, "@");
+    }
 
-		dateinamen[j] = malloc(groesse_neu[j] * sizeof(char));
-		if(dateinamen[j] != NULL)
-		{
-			printf("Speicher fuer Dateiname ist reserviert\n\n");
-		}else
-		{
-			printf("Kein freier Speicher vorhanden.\n\n");
-		}
-		i++;
-		j++;
-	}
-	i = 3;
-	j = 0;
+    printf("Buffer: %s\n", buffer);
 
-	// Dateinamen von der Main-Funktion in neue Arrays kopieren
-	while(i < argc)
-	{
-		strcpy(dateinamen[j], argv[i]);
-
-		strcat(dateinamen[j], "@");
-		printf("%d.Name: %s\n", j, dateinamen[j]);
-		i++;
-		j++;
-
-	}
-	i = 3;
-	j = 0;
-
-
-	//Buffergroesse ermitteln
-	while(i < argc)
-	{
-		buffergroesse = buffergroesse + groesse_neu[j];
-		i++;
-		j++;
-	}
-	i = 3;
-	j = 0;
-
-	printf("Buffergroesse: %d\n", buffergroesse);
-	buffer = malloc(buffergroesse * sizeof(char)+1);
-
-	if(buffer != NULL)
-	{
-		printf("\nSpeicher fuer Buffer ist reserviert\n");
-	}else
-	{
-		printf("\nKein freier Speicher vorhanden.\n");
-	}
-
-	bzero(buffer,strlen(buffer));
-
-	//Dateinamen in buffer zusammenfuegen
-	while(i < argc)
-	{
-		strcat(buffer, dateinamen[j]);
-		i++;
-		j++;
-	}
-	i = 3;
-	j = 0;
-
-	printf("\nBuffer: %s\n\n", buffer);
-
-	//DATEINAMEN AN SERVER SENDEN
-	n = write(sockfd,buffer,strlen(buffer));
-	if (n < 0)
-	{
+    //Send buffer
+    n = write(sockfd, buffer,strlen(buffer));
+	if (n < 0) {
 		error("ERROR writing to socket");
 	}
 
-	bzero(buffer,strlen(buffer));
-	n = read(sockfd,buffer,255);
-	if (n < 0)
-	{
-		error("ERROR reading from socket");
-	}
-
-	printf("%s\n",buffer);
-	bzero(buffer,strlen(buffer));
-	fgets(buffer,strlen(buffer),stdin);
-	n = write(sockfd,buffer,strlen(buffer));
-
-	if (n < 0)
-	{
-		error("ERROR writing to socket");
-	}
-
-
-	//ALLOCIERTEN SPEICHER FREIGEBEN
-	for(int i = 0; i < argc-3; i++)
-	{
-		free(dateinamen[i]);
-		printf("Speicher der Dateinamen freigegeben!!!\n");
-	}
-
-	free(buffer);
-	printf("Buffer freigegeben!!!\n");
-
-	close(sockfd);
-	return 0;
+    return 0;
 }
