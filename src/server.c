@@ -79,26 +79,28 @@ int main(int argc, char *argv[])
         //Receive number of bytes to be read and sanitize them
         n = read(newsockfd, buffer, 2);
 
+		printf("N is equal to: %d\n", n);
+
         for(int i = 0; i < strlen(buffer); i++)
 	    {
-            if(!(buffer[i] >= '0' && buffer[i] <= '9'))
+            if((buffer[i] >= '0' && buffer[i] <= '9'))
             {
-        	    printf("Invalid number of bytes!\n");
+				anzahl = atoi(buffer);
+				if (anzahl > 10) {
+                	printf("Too many bytes to be read!\n");
+                	write(newsockfd, invalidNumBytes, strlen(invalidNumBytes));
+                	invalid = 1;
+					break;
+            	}
+			}
+			else {
+				printf("Invalid number of bytes!\n");
                 printf("Received Data: %s\n", buffer);
                 write(newsockfd, invalidNumBytes, strlen(invalidNumBytes));
                 invalid = 1;
-            }
+				break;
+			} 
 	    }
-
-        if(!invalid) {
-            anzahl = atoi(buffer);
-
-            if (anzahl > 10) {
-                printf("Too many bytes to be read!\n");
-                write(newsockfd, invalidNumBytes, strlen(invalidNumBytes));
-                invalid = 1;
-            }
-        }
 
         printf("\n");
 

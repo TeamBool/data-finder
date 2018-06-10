@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
     }
     
     //Send number of bytes
-    n = write(sockfd, argv[3], strlen(argv[3]));
+    n = write(sockfd, argv[3], 2);
     usleep(100);
 
     n = read(sockfd, status, sizeof(status));
