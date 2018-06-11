@@ -105,66 +105,66 @@ int main(int argc, char *argv[])
         printf("\n");
 
         if(!invalid) {
-        n = write(newsockfd, "OK", 2);
-        printf("Number of bytes: %d\n", anzahl);
+			n = write(newsockfd, "OK", 2);
+			printf("Number of bytes: %d\n", anzahl);
 
-        memset(buffer, '\0', sizeof(buffer));
+			memset(buffer, '\0', sizeof(buffer));
 
-		//DATEN VOM CLIENT EMPFANGEN
-		n = read(newsockfd,buffer,255);
+			//DATEN VOM CLIENT EMPFANGEN
+			n = read(newsockfd,buffer,255);
 
-		if (n < 0) error("ERROR reading from socket");
+			if (n < 0) error("ERROR reading from socket");
 
-		printf("Here is the message: %s\n\n",buffer);
+			printf("Here is the message: %s\n\n",buffer);
 
-		n = write(newsockfd, "I got your message.\n",255);
+			n = write(newsockfd, "I got your message.\n",255);
 
-		if (n < 0) error("ERROR writing to socket");
+			if (n < 0) error("ERROR writing to socket");
 
-		// Buffer wieder aufteilen, pruefen und ausgeben
-		/** TOFIX **/
-		int i = 0; // Laufvariable
-		char newbuffer[256];
-        char outputString[10][20];
-		memset(newbuffer, '\0', sizeof(newbuffer));
-		/** TOFIX **/
-		aufteilung = strtok(buffer, "<");
-		do
-		{
-			printf("Moeglicher Dateiname gefunden: %s\n", aufteilung);
-
-			fp = fopen(aufteilung, "r");
-			if(fp == NULL)
+			// Buffer wieder aufteilen, pruefen und ausgeben
+			/** TOFIX **/
+			int i = 0; // Laufvariable
+			char newbuffer[256];
+			char outputString[10][20];
+			memset(newbuffer, '\0', sizeof(newbuffer));
+			/** TOFIX **/
+			aufteilung = strtok(buffer, "<");
+			do
 			{
-					printf("Die Datei %s existiert NICHT.\n\n", aufteilung);
-					newbuffer[i] = '0';
-			} else
-			{
-					printf("Die Datei %s existiert.\n\n", aufteilung);
-					newbuffer[i] = '1';
-                    fgets(outputString[i], anzahl+1, fp);
-					fclose(fp);
+				printf("Moeglicher Dateiname gefunden: %s\n", aufteilung);
+
+				fp = fopen(aufteilung, "r");
+				if(fp == NULL)
+				{
+						printf("Die Datei %s existiert NICHT.\n\n", aufteilung);
+						newbuffer[i] = '0';
+				} else
+				{
+						printf("Die Datei %s existiert.\n\n", aufteilung);
+						newbuffer[i] = '1';
+						fgets(outputString[i], anzahl+1, fp);
+						fclose(fp);
+				}
+
+				aufteilung = strtok(NULL, "<");
+				i++;
+
+			} while(aufteilung != NULL);
+
+			n = write(newsockfd, newbuffer, 255);
+			usleep(1000);
+
+			for(int j = 0; j < i; j++) {
+				if(newbuffer[j] == '1') {
+				n = write(newsockfd, outputString[j], strlen(outputString[j]));
+				printf("String: %s\n", outputString[j]);
+				usleep(5000);
+				}
 			}
+			printf("-----------------------------\n");
 
-			aufteilung = strtok(NULL, "<");
-			i++;
-
-		} while(aufteilung != NULL);
-
-		n = write(newsockfd, newbuffer, 255);
-        usleep(1000);
-
-        for(int j = 0; j < i; j++) {
-            if(newbuffer[j] == '1') {
-            n = write(newsockfd, outputString[j], strlen(outputString[j]));
-            printf("String: %s\n", outputString[j]);
-            usleep(1000);
-            }
-        }
-        printf("-----------------------------\n");
-
-		if (n < 0) error("ERROR writing to socket");
-        }
+			if (n < 0) error("ERROR writing to socket");
+		}
 		close(newsockfd);
         }
 
